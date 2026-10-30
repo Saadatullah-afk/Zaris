@@ -1,0 +1,189 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./zaris.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("ADMIN") // ADMIN, STAFF
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  image       String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id                    String                 @id @default(uuid())
+  name                  String
+  slug                  String                 @unique
+  sku                   String                 @unique
+  description           String
+  price                 Float
+  costPrice             Float
+  discountPrice         Float?
+  stock                 Int                    @default(0)
+  categoryId            String
+  category              Category               @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  featured              Boolean                @default(false)
+  bestSeller            Boolean                @default(false)
+  status                String                 @default("ACTIVE") // ACTIVE, DRAFT, OUT_OF_STOCK
+  images                String                 // JSON string of image URLs
+  tags                  String?                // Comma separated or JSON string
+  specs                 String?                // JSON string of key-value attributes
+  careInfo              String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  variants              ProductVariant[]
+  orderItems            OrderItem[]
+  salesRecords          SalesRecord[]
+  inventoryTransactions InventoryTransaction[]
+  reviews               Review[]
+}
+
+model ProductVariant {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String
+  color      String?
+  size       String?
+  stock      Int      @default(0)
+  extraPrice Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model InventoryTransaction {
+  id             String   @id @default(uuid())
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stockIn        Int      @default(0)
+  stockOut       Int      @default(0)
+  remainingStock Int
+  reason         String   // e.g. "Initial Stock", "Order Fulfilled #ZARIS-2026-0001", "Manual Restock", "Return"
+  reference      String?
+  adminName      String   @default("System")
+  createdAt      DateTime @default(now())
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String   @unique
+  email       String?
+  address     String
+  district    String   @default("Dhaka")
+  area        String?
+  totalOrders Int      @default(0)
+  totalSpent  Float    @default(0)
+  notes       String?
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  orderId        String      @unique // e.g. ZARIS-2026-0001
+  customerId     String?
+  customer       Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName   String
+  phone          String
+  email          String?
+  address        String
+  district       String
+  area           String
+  deliveryNote   String?
+  socialUsername String?
+  deliveryCharge Float       @default(0)
+  subtotal       Float
+  total          Float
+  paymentMethod  String      @default("COD") // COD, BKASH, NAGAD, BANK
+  paymentStatus  String      @default("PENDING") // PENDING, PAID, DUE, REFUNDED
+  orderStatus    String      @default("PENDING") // PENDING, CONFIRMED, PROCESSING, READY_TO_SHIP, SHIPPED, DELIVERED, CANCELLED
+  notes          String?
+  items          OrderItem[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productName String
+  sku         String
+  price       Float
+  costPrice   Float
+  quantity    Int
+  subtotal    Float
+  createdAt   DateTime @default(now())
+}
+
+model SalesRecord {
+  id            String   @id @default(uuid())
+  date          DateTime @default(now())
+  type          String   @default("SALE") // SALE, RETURN, ADJUSTMENT
+  categoryName  String
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName   String
+  quantity      Int
+  costPrice     Float
+  sellingPrice  Float
+  total         Float
+  profit        Float
+  paymentMethod String   @default("COD")
+  customerName  String
+  notes         String?
+  createdAt     DateTime @default(now())
+}
+
+model Expense {
+  id            String   @id @default(uuid())
+  date          DateTime @default(now())
+  category      String   // PACKAGING, DELIVERY, MARKETING, RAW_MATERIALS, PRODUCT_PURCHASE, PLATFORM, OTHER
+  description   String
+  amount        Float
+  paymentMethod String   @default("CASH")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Review {
+  id           String   @id @default(uuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerName String
+  rating       Int      @default(5)
+  comment      String
+  isApproved   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Setting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
